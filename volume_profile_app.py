@@ -198,4 +198,5 @@ with tab4:
             break
 
     va_low = bins[min(va_indices)]
-    va_high = bins[max(va_indices) + 
+    va_high = bins[max(va_indices) + ]
+

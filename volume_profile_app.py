@@ -43,7 +43,7 @@ if not st.session_state.authenticated:
             st.session_state.username = username_input
             st.session_state.auth_time = datetime.now()
             st.success(f"✅ Bienvenido, {username_input}")
-            st.experimental_rerun()
+            st.stop()  # Detiene la ejecución actual, y en el siguiente ciclo se recarga con sesión activa
         else:
             st.error("❌ Usuario o contraseña incorrectos")
     st.stop()
@@ -291,3 +291,4 @@ with tab4:
     )
 
     st.plotly_chart(fig, use_container_width=True)
+

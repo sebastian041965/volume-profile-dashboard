@@ -101,7 +101,15 @@ def get_data(symbol, interval, start, end):
         ])
         df["timestamp"] = pd.to_datetime(df["timestamp"], unit="ms")
         df.set_index("timestamp", inplace=True)
-        df = df[["open", "high", "low", "close", "volume"]].astype(float)
+        expected_cols = ["open", "high", "low", "close", "volume"]
+df.columns = [str(col).lower() for col in df.columns]
+
+if all(col in df.columns for col in expected_cols):
+    df = df[expected_cols].dropna()
+else:
+    st.warning("⚠️ No se encontraron las columnas esperadas en los datos descargados.")
+    st.stop()
+
     else:
         ticker = symbol + "=X" if not symbol.endswith("=X") else symbol
         df = yf.download(ticker, start=start, end=end, interval=interval)
@@ -199,6 +207,7 @@ with tab4:
 
     va_low = bins[min(va_indices)]
     va_high = bins[max(va_indices) + 1]
+
 
 
 

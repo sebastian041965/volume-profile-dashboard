@@ -74,7 +74,7 @@ if st.sidebar.button("Cerrar sesión"):
     st.session_state.auth_time = None
     st.experimental_rerun()
 
-symbol = st.sidebar.text_input("Símbolo (ej. BTCUSDT o EURUSD)", value="EURUSD")
+symbol = symbol_options[selected_label]
 period_days = st.sidebar.slider("Días a analizar", 1, 30, 10)
 resolution = st.sidebar.slider("Resolución", 100, 1000, 500)
 
@@ -250,6 +250,7 @@ with tab4:
 
     va_low = bins[min(va_indices)]
     va_high = bins[max(va_indices) + 1]
+
 
 
 

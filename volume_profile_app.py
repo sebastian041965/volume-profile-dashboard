@@ -125,17 +125,24 @@ def get_data(symbol, interval, start, end):
         else:
             df.columns = [str(col).lower() for col in df.columns]
 
-        expected_cols = ["open", "high", "low", "close", "volume"]
+        # Mostrar columnas recibidas
         st.write("🧪 Columnas recibidas:", df.columns.tolist())
 
+        # Verificar columnas duplicadas
+        if len(set(df.columns)) != len(df.columns):
+            st.warning(f"⚠️ El símbolo `{symbol}` devolvió columnas duplicadas: {list(df.columns)}. Esto puede indicar que no hay datos OHLC disponibles.")
+            st.stop()
+
+        expected_cols = ["open", "high", "low", "close", "volume"]
         if not all(col in df.columns for col in expected_cols):
             st.warning(f"⚠️ Las columnas esperadas no están disponibles. Revisa si el símbolo `{symbol}` es válido o si la fuente de datos es compatible.")
-            st.write("📊 Primeras filas del DataFrame:", df.head())
+            st.dataframe(df.head())
             st.stop()
 
         df = df[expected_cols].dropna()
 
     return df
+
 
 
 
@@ -226,6 +233,7 @@ with tab4:
 
     va_low = bins[min(va_indices)]
     va_high = bins[max(va_indices) + 1]
+
 
 
 

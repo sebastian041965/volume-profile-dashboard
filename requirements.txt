@@ -1,8 +1,8 @@
 streamlit
-yfinance
-matplotlib
 pandas
 numpy
-python-binance
-streamlit-drawable-canvas
+matplotlib
 plotly
+yfinance
+streamlit-drawable-canvas
+python-binance

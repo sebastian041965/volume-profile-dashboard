@@ -73,7 +73,7 @@ end_date = datetime.utcnow()
 start_date = end_date - timedelta(days=period_days)
 df = yf.download(ticker, start=start_date, end=end_date, interval="1h")
 df = df[['Open', 'High', 'Low', 'Close', 'Volume']].dropna()
-df.columns = df.columns.str.lower()
+df.columns = [col[1].lower() if isinstance(col, tuple) else col.lower() for col in df.columns]
 
 # 🧱 Tab 1: Perfil de Volumen clásico
 low_price = df['low'].min()
@@ -291,4 +291,5 @@ with tab4:
     )
 
     st.plotly_chart(fig, use_container_width=True)
+
 

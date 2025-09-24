@@ -164,7 +164,7 @@ def get_data(symbol, interval, start, end):
 
 
 # 🧱 Tab 1: Perfil de Volumen clásico
-df = get_data(symbol, "1h", start_date, end_date)
+df = get_data(symbol, default_interval, start_date, end_date)
 if df.empty:
     st.warning("⚠️ No se encontraron datos para el símbolo ingresado.")
     st.stop()
@@ -250,6 +250,7 @@ with tab4:
 
     va_low = bins[min(va_indices)]
     va_high = bins[max(va_indices) + 1]
+
 
 
 

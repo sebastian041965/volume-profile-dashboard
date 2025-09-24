@@ -111,7 +111,7 @@ def get_data(symbol, interval, start, end):
         df = df[expected_cols].dropna()
     else:
         st.warning("⚠️ No se encontraron las columnas esperadas en los datos descargados.")
-     st.stop()
+        st.stop()
 
 
     else:
@@ -211,6 +211,7 @@ with tab4:
 
     va_low = bins[min(va_indices)]
     va_high = bins[max(va_indices) + 1]
+
 
 
 

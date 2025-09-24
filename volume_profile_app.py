@@ -93,7 +93,12 @@ def get_data(symbol, interval, start, end):
             "1wk": Client.KLINE_INTERVAL_1WEEK,
             "1mo": Client.KLINE_INTERVAL_1MONTH
         }
-        klines = client.get_historical_klines(symbol, binance_interval[interval], start.strftime("%d %b %Y %H:%M:%S"), end.strftime("%d %b %Y %H:%M:%S"))
+        klines = client.get_historical_klines(
+            symbol,
+            binance_interval[interval],
+            start.strftime("%d %b %Y %H:%M:%S"),
+            end.strftime("%d %b %Y %H:%M:%S")
+        )
         df = pd.DataFrame(klines, columns=[
             "timestamp", "open", "high", "low", "close", "volume",
             "close_time", "quote_asset_volume", "number_of_trades",
@@ -101,28 +106,31 @@ def get_data(symbol, interval, start, end):
         ])
         df["timestamp"] = pd.to_datetime(df["timestamp"], unit="ms")
         df.set_index("timestamp", inplace=True)
-        expected_cols = ["open", "high", "low", "close", "volume"]
-# Convertir columnas a minúsculas
-        df.columns = [str(col).lower() for col in df.columns]
-
-# Validar que existan las columnas esperadas
-    expected_cols = ["open", "high", "low", "close", "volume"]
-    if all(col in df.columns for col in expected_cols):
-        df = df[expected_cols].dropna()
-    else:
-        st.warning("⚠️ No se encontraron las columnas esperadas en los datos descargados.")
-        st.stop()
-
-
+        df = df[["open", "high", "low", "close", "volume"]].astype(float)
     else:
         ticker = symbol + "=X" if not symbol.endswith("=X") else symbol
         df = yf.download(ticker, start=start, end=end, interval=interval)
+
+        # Validar columnas
+        if df.empty:
+            st.warning("⚠️ No se encontraron datos para el símbolo ingresado.")
+            st.stop()
+
+        # Convertir columnas a minúsculas
         if isinstance(df.columns, pd.MultiIndex):
             df.columns = [col[1].lower() if isinstance(col, tuple) else col.lower() for col in df.columns]
         else:
             df.columns = [str(col).lower() for col in df.columns]
-        df = df[["open", "high", "low", "close", "volume"]].dropna()
+
+        expected_cols = ["open", "high", "low", "close", "volume"]
+        if all(col in df.columns for col in expected_cols):
+            df = df[expected_cols].dropna()
+        else:
+            st.warning("⚠️ Las columnas esperadas no están disponibles en los datos.")
+            st.stop()
+
     return df
+
 
 # 🧱 Tab 1: Perfil de Volumen clásico
 df = get_data(symbol, "1h", start_date, end_date)
@@ -211,6 +219,7 @@ with tab4:
 
     va_low = bins[min(va_indices)]
     va_high = bins[max(va_indices) + 1]
+
 
 
 

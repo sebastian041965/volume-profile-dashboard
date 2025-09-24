@@ -50,7 +50,24 @@ if not st.session_state.authenticated:
 
 # 🧭 Parámetros comunes
 st.title("📊 Volume Profile Dashboard")
-st.sidebar.markdown(f"👤 Sesión activa: **{st.session_state.username}**")
+st.sidebar.markdown("### Selecciona un activo")
+
+symbol_options = {
+    "EUR/USD (Yahoo)": "EURUSD=X",
+    "USD/JPY (Yahoo)": "USDJPY=X",
+    "GBP/USD (Yahoo)": "GBPUSD=X",
+    "BTC/USDT (Binance)": "BTCUSDT",
+    "ETH/USDT (Binance)": "ETHUSDT",
+    "BNB/USDT (Binance)": "BNBUSDT"
+}
+
+selected_label = st.sidebar.selectbox("Activo", list(symbol_options.keys()))
+symbol = symbol_options[selected_label]
+
+# Temporalidad recomendada
+default_interval = "1h" if symbol.endswith("USDT") else "1d"
+st.sidebar.markdown(f"⏱️ Temporalidad recomendada: `{default_interval}`")
+
 if st.sidebar.button("Cerrar sesión"):
     st.session_state.authenticated = False
     st.session_state.username = ""
@@ -233,6 +250,7 @@ with tab4:
 
     va_low = bins[min(va_indices)]
     va_high = bins[max(va_indices) + 1]
+
 
 
 

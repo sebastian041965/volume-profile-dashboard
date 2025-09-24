@@ -80,6 +80,7 @@ def detect_data_source(symbol):
 
 def get_data(symbol, interval, start, end):
     source = detect_data_source(symbol)
+
     if source == "binance":
         from binance.client import Client
         client = Client()
@@ -93,12 +94,14 @@ def get_data(symbol, interval, start, end):
             "1wk": Client.KLINE_INTERVAL_1WEEK,
             "1mo": Client.KLINE_INTERVAL_1MONTH
         }
+
         klines = client.get_historical_klines(
             symbol,
             binance_interval[interval],
             start.strftime("%d %b %Y %H:%M:%S"),
             end.strftime("%d %b %Y %H:%M:%S")
         )
+
         df = pd.DataFrame(klines, columns=[
             "timestamp", "open", "high", "low", "close", "volume",
             "close_time", "quote_asset_volume", "number_of_trades",
@@ -107,29 +110,33 @@ def get_data(symbol, interval, start, end):
         df["timestamp"] = pd.to_datetime(df["timestamp"], unit="ms")
         df.set_index("timestamp", inplace=True)
         df = df[["open", "high", "low", "close", "volume"]].astype(float)
+
     else:
         ticker = symbol + "=X" if not symbol.endswith("=X") else symbol
         df = yf.download(ticker, start=start, end=end, interval=interval)
 
-        # Validar columnas
         if df.empty:
-            st.warning("⚠️ No se encontraron datos para el símbolo ingresado.")
+            st.warning(f"⚠️ No se encontraron datos para el símbolo `{symbol}` en la temporalidad `{interval}`. Prueba con una temporalidad más amplia como `1h`, `4h` o `1d`.")
             st.stop()
 
-        # Convertir columnas a minúsculas
+        # Normalizar columnas
         if isinstance(df.columns, pd.MultiIndex):
             df.columns = [col[1].lower() if isinstance(col, tuple) else col.lower() for col in df.columns]
         else:
             df.columns = [str(col).lower() for col in df.columns]
 
         expected_cols = ["open", "high", "low", "close", "volume"]
-        if all(col in df.columns for col in expected_cols):
-            df = df[expected_cols].dropna()
-        else:
-            st.warning("⚠️ Las columnas esperadas no están disponibles en los datos.")
+        st.write("🧪 Columnas recibidas:", df.columns.tolist())
+
+        if not all(col in df.columns for col in expected_cols):
+            st.warning(f"⚠️ Las columnas esperadas no están disponibles. Revisa si el símbolo `{symbol}` es válido o si la fuente de datos es compatible.")
+            st.write("📊 Primeras filas del DataFrame:", df.head())
             st.stop()
 
+        df = df[expected_cols].dropna()
+
     return df
+
 
 
 # 🧱 Tab 1: Perfil de Volumen clásico
@@ -219,6 +226,7 @@ with tab4:
 
     va_low = bins[min(va_indices)]
     va_high = bins[max(va_indices) + 1]
+
 
 
 

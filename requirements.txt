@@ -1,0 +1,8 @@
+streamlit
+yfinance
+matplotlib
+pandas
+numpy
+python-binance
+streamlit-drawable-canvas
+plotly

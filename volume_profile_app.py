@@ -103,10 +103,11 @@ def get_data(symbol, interval, start, end):
         try:
             client = Client()
             client.ping()
-        except Exception as e:
-            st.warning("⚠️ No se pudo conectar con Binance. Verifica tu conexión o intenta más tarde.")
-            st.stop()
+        except Exception:
+            st.warning("⚠️ Binance no está disponible. Usando CoinGecko como respaldo.")
+            source = "coingecko"
 
+    if source == "binance":
         binance_interval = {
             "1m": Client.KLINE_INTERVAL_1MINUTE,
             "5m": Client.KLINE_INTERVAL_5MINUTE,
@@ -116,24 +117,99 @@ def get_data(symbol, interval, start, end):
             "1d": Client.KLINE_INTERVAL_1DAY,
             "1wk": Client.KLINE_INTERVAL_1WEEK,
             "1mo": Client.KLINE_INTERVAL_1MONTH
-    }
+        }
 
         klines = client.get_historical_klines(
             symbol,
             binance_interval[interval],
             start.strftime("%d %b %Y %H:%M:%S"),
             end.strftime("%d %b %Y %H:%M:%S")
-    )
+        )
 
         df = pd.DataFrame(klines, columns=[
             "timestamp", "open", "high", "low", "close", "volume",
             "close_time", "quote_asset_volume", "number_of_trades",
             "taker_buy_base_volume", "taker_buy_quote_volume", "ignore"
-    ])
+        ])
         df["timestamp"] = pd.to_datetime(df["timestamp"], unit="ms")
         df.set_index("timestamp", inplace=True)
         df = df[["open", "high", "low", "close", "volume"]].astype(float)
 
+    elif source == "coingecko":
+        import requests
+        from datetime import timezone
+
+        coin_map = {
+            "BTCUSDT": "bitcoin",
+            "ETHUSDT": "ethereum",
+            "BNBUSDT": "binancecoin"
+        }
+
+        coin_id = coin_map.get(symbol.upper())
+        if not coin_id:
+            st.warning(f"⚠️ CoinGecko no reconoce el símbolo `{symbol}`.")
+            st.stop()
+
+        url = f"https://api.coingecko.com/api/v3/coins/{coin_id}/market_chart"
+        params = {
+            "vs_currency": "usd",
+            "days": period_days,
+            "interval": "hourly" if interval in ["1h", "4h"] else "daily"
+        }
+
+        try:
+            response = requests.get(url, params=params)
+            data = response.json()
+            prices = data.get("prices", [])
+            volumes = data.get("total_volumes", [])
+
+            if not prices or not volumes:
+                st.warning(f"⚠️ CoinGecko no devolvió datos para `{symbol}`.")
+                st.stop()
+
+            df = pd.DataFrame({
+                "timestamp": [datetime.fromtimestamp(p[0] / 1000, tz=timezone.utc) for p in prices],
+                "close": [p[1] for p in prices],
+                "volume": [v[1] for v in volumes]
+            })
+            df["open"] = df["close"].shift(1).fillna(df["close"])
+            df["high"] = df[["open", "close"]].max(axis=1)
+            df["low"] = df[["open", "close"]].min(axis=1)
+            df.set_index("timestamp", inplace=True)
+            df = df[["open", "high", "low", "close", "volume"]]
+
+        except Exception:
+            st.warning("⚠️ Error al conectar con CoinGecko.")
+            st.stop()
+
+    else:
+        ticker = symbol + "=X" if not symbol.endswith("=X") else symbol
+        df = yf.download(ticker, start=start, end=end, interval=interval)
+
+        if df.empty:
+            st.warning(f"⚠️ No se encontraron datos para el símbolo `{symbol}` en la temporalidad `{interval}`. Prueba con una temporalidad más amplia como `1h`, `4h` o `1d`.")
+            st.stop()
+
+        if isinstance(df.columns, pd.MultiIndex):
+            df.columns = [col[1].lower() if isinstance(col, tuple) else col.lower() for col in df.columns]
+        else:
+            df.columns = [str(col).lower() for col in df.columns]
+
+        st.write("🧪 Columnas recibidas:", df.columns.tolist())
+
+        if len(set(df.columns)) != len(df.columns):
+            st.warning(f"⚠️ El símbolo `{symbol}` devolvió columnas duplicadas: {list(df.columns)}. Esto puede indicar que no hay datos OHLC disponibles.")
+            st.stop()
+
+        expected_cols = ["open", "high", "low", "close", "volume"]
+        if not all(col in df.columns for col in expected_cols):
+            st.warning(f"⚠️ Las columnas esperadas no están disponibles. Revisa si el símbolo `{symbol}` es válido o si la fuente de datos es compatible.")
+            st.dataframe(df.head())
+            st.stop()
+
+        df = df[expected_cols].dropna()
+
+    return df
 
     else:
         ticker = symbol + "=X" if not symbol.endswith("=X") else symbol
@@ -257,6 +333,7 @@ with tab4:
 
     va_low = bins[min(va_indices)]
     va_high = bins[max(va_indices) + 1]
+
 
 
 

@@ -201,7 +201,11 @@ def get_data(symbol, interval, start, end):
     return df
 
 # 📥 Obtener datos
-df = get_data(symbol, default_interval, start_date, end_date)
+@st.cache_data(ttl=3600)
+def get_data_cached(symbol, interval, start, end):
+    return get_data(symbol, interval, start, end)
+    
+df = get_data_cached(symbol, default_interval, start_date, end_date)
 
 # 🧭 Crear pestañas
 tab0, tab1, tab2, tab3, tab4 = st.tabs(["🏠 Inicio", "📊 Perfil de Volumen", "📐 Trazado Técnico", "🖌️ Dibujo", "📈 Velas + VP"])
@@ -232,6 +236,11 @@ with tab0:
 # 📊 Tab 1: Perfil de Volumen
 with tab1:
     st.subheader("Perfil de Volumen")
+
+    if st.button("🔄 Recargar datos"):
+        st.experimental_rerun()
+
+    st.subheader("Perfil de Volumen")
     prices = df["close"]
     volumes = df["volume"]
     hist, bins = np.histogram(prices, bins=resolution, weights=volumes)
@@ -253,6 +262,12 @@ with tab1:
 
 # 📐 Tab 2: Trazado Técnico
 with tab2:
+    st.subheader("Perfil de Volumen")
+
+    if st.button("🔄 Recargar datos"):
+        st.experimental_rerun()
+    
+    
     st.subheader("Trazado Técnico")
     ma_type = st.selectbox("Tipo de media móvil", ["SMA", "EMA", "WMA"])
     ma_period = st.slider("Periodo", 5, 100, 20)
@@ -272,6 +287,12 @@ with tab2:
 
 # 🖌️ Tab 3: Dibujo libre
 with tab3:
+
+    st.subheader("Perfil de Volumen")
+
+    if st.button("🔄 Recargar datos"):
+        st.experimental_rerun()
+        
     st.subheader("Dibujo y Anotaciones")
     canvas_result = st_canvas(
         fill_color="rgba(255, 165, 0, 0.3)",
@@ -288,6 +309,11 @@ with tab3:
 
 # 📈 Tab 4: Velas + VP dinámico
 with tab4:
+    st.subheader("Perfil de Volumen")
+
+    if st.button("🔄 Recargar datos"):
+        st.experimental_rerun()
+        
     st.subheader("Gráfico de Velas + VP Dinámico")
     fig = go.Figure(data=[go.Candlestick(
         x=df.index,
@@ -298,4 +324,5 @@ with tab4:
     )])
     fig.update_layout(height=600)
     st.plotly_chart(fig, use_container_width=True)
+
 

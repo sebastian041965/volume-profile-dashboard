@@ -99,34 +99,41 @@ def get_data(symbol, interval, start, end):
     source = detect_data_source(symbol)
 
     if source == "binance":
-        from binance.client import Client
+    from binance.client import Client
+    try:
         client = Client()
-        binance_interval = {
-            "1m": Client.KLINE_INTERVAL_1MINUTE,
-            "5m": Client.KLINE_INTERVAL_5MINUTE,
-            "15m": Client.KLINE_INTERVAL_15MINUTE,
-            "1h": Client.KLINE_INTERVAL_1HOUR,
-            "4h": Client.KLINE_INTERVAL_4HOUR,
-            "1d": Client.KLINE_INTERVAL_1DAY,
-            "1wk": Client.KLINE_INTERVAL_1WEEK,
-            "1mo": Client.KLINE_INTERVAL_1MONTH
-        }
+        client.ping()
+    except Exception as e:
+        st.warning("⚠️ No se pudo conectar con Binance. Verifica tu conexión o intenta más tarde.")
+        st.stop()
 
-        klines = client.get_historical_klines(
-            symbol,
-            binance_interval[interval],
-            start.strftime("%d %b %Y %H:%M:%S"),
-            end.strftime("%d %b %Y %H:%M:%S")
-        )
+    binance_interval = {
+        "1m": Client.KLINE_INTERVAL_1MINUTE,
+        "5m": Client.KLINE_INTERVAL_5MINUTE,
+        "15m": Client.KLINE_INTERVAL_15MINUTE,
+        "1h": Client.KLINE_INTERVAL_1HOUR,
+        "4h": Client.KLINE_INTERVAL_4HOUR,
+        "1d": Client.KLINE_INTERVAL_1DAY,
+        "1wk": Client.KLINE_INTERVAL_1WEEK,
+        "1mo": Client.KLINE_INTERVAL_1MONTH
+    }
 
-        df = pd.DataFrame(klines, columns=[
-            "timestamp", "open", "high", "low", "close", "volume",
-            "close_time", "quote_asset_volume", "number_of_trades",
-            "taker_buy_base_volume", "taker_buy_quote_volume", "ignore"
-        ])
-        df["timestamp"] = pd.to_datetime(df["timestamp"], unit="ms")
-        df.set_index("timestamp", inplace=True)
-        df = df[["open", "high", "low", "close", "volume"]].astype(float)
+    klines = client.get_historical_klines(
+        symbol,
+        binance_interval[interval],
+        start.strftime("%d %b %Y %H:%M:%S"),
+        end.strftime("%d %b %Y %H:%M:%S")
+    )
+
+    df = pd.DataFrame(klines, columns=[
+        "timestamp", "open", "high", "low", "close", "volume",
+        "close_time", "quote_asset_volume", "number_of_trades",
+        "taker_buy_base_volume", "taker_buy_quote_volume", "ignore"
+    ])
+    df["timestamp"] = pd.to_datetime(df["timestamp"], unit="ms")
+    df.set_index("timestamp", inplace=True)
+    df = df[["open", "high", "low", "close", "volume"]].astype(float)
+
 
     else:
         ticker = symbol + "=X" if not symbol.endswith("=X") else symbol
@@ -250,6 +257,7 @@ with tab4:
 
     va_low = bins[min(va_indices)]
     va_high = bins[max(va_indices) + 1]
+
 
 
 

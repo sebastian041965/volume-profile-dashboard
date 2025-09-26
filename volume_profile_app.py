@@ -48,8 +48,9 @@ if not st.session_state.authenticated:
             st.error("❌ Usuario o contraseña incorrectos")
     st.stop()
 
-# 🧭 Parámetros comunes
 st.title("📊 Volume Profile Dashboard")
+
+# 🎯 Selector de activo
 st.sidebar.markdown("### Selecciona un activo")
 
 symbol_options = {
@@ -64,36 +65,24 @@ symbol_options = {
 selected_label = st.sidebar.selectbox("Activo", list(symbol_options.keys()))
 symbol = symbol_options[selected_label]
 
-# Temporalidad recomendada
+# ⏱️ Temporalidad recomendada
 default_interval = "1h" if symbol.endswith("USDT") else "1d"
 st.sidebar.markdown(f"⏱️ Temporalidad recomendada: `{default_interval}`")
 
-if st.sidebar.button("Cerrar sesión"):
-    st.session_state.authenticated = False
-    st.session_state.username = ""
-    st.session_state.auth_time = None
-    st.experimental_rerun()
+# 📅 Parámetros de análisis
+period_days = st.sidebar.slider("Días a analizar", min_value=1, max_value=30, value=7)
+resolution = st.sidebar.slider("Resolución", min_value=100, max_value=1000, value=300)
 
-symbol = symbol_options[selected_label]
-period_days = st.sidebar.slider("Días a analizar", 1, 30, 10)
-resolution = st.sidebar.slider("Resolución", 100, 1000, 500)
-
-tab1, tab2, tab3, tab4 = st.tabs([
-    "Perfil de Volumen",
-    "Trazado Técnico",
-    "Dibujo y Anotaciones",
-    "Gráfico de Velas + VP Dinámico"
-])
-
-end_date = datetime.utcnow()
+end_date = datetime.now()
 start_date = end_date - timedelta(days=period_days)
 
-# 🔍 Detección automática de fuente
 def detect_data_source(symbol):
-    crypto_suffixes = ["USDT", "BTC", "ETH", "BNB", "SOL"]
-    if any(symbol.endswith(suffix) for suffix in crypto_suffixes):
+    if symbol.endswith("USDT"):
         return "binance"
-    return "yahoo"
+    elif symbol.endswith("=X"):
+        return "yahoo"
+    else:
+        return "coingecko"
 
 def get_data(symbol, interval, start, end):
     source = detect_data_source(symbol)
@@ -211,140 +200,78 @@ def get_data(symbol, interval, start, end):
 
     return df
 
-    else:
-        ticker = symbol + "=X" if not symbol.endswith("=X") else symbol
-        df = yf.download(ticker, start=start, end=end, interval=interval)
-
-        if df.empty:
-            st.warning(f"⚠️ No se encontraron datos para el símbolo `{symbol}` en la temporalidad `{interval}`. Prueba con una temporalidad más amplia como `1h`, `4h` o `1d`.")
-            st.stop()
-
-        # Normalizar columnas
-        if isinstance(df.columns, pd.MultiIndex):
-            df.columns = [col[1].lower() if isinstance(col, tuple) else col.lower() for col in df.columns]
-        else:
-            df.columns = [str(col).lower() for col in df.columns]
-
-        # Mostrar columnas recibidas
-        st.write("🧪 Columnas recibidas:", df.columns.tolist())
-
-        # Verificar columnas duplicadas
-        if len(set(df.columns)) != len(df.columns):
-            st.warning(f"⚠️ El símbolo `{symbol}` devolvió columnas duplicadas: {list(df.columns)}. Esto puede indicar que no hay datos OHLC disponibles.")
-            st.stop()
-
-        expected_cols = ["open", "high", "low", "close", "volume"]
-        if not all(col in df.columns for col in expected_cols):
-            st.warning(f"⚠️ Las columnas esperadas no están disponibles. Revisa si el símbolo `{symbol}` es válido o si la fuente de datos es compatible.")
-            st.dataframe(df.head())
-            st.stop()
-
-        df = df[expected_cols].dropna()
-
-    return df
-
-
-
-
-# 🧱 Tab 1: Perfil de Volumen clásico
+# 📥 Obtener datos
 df = get_data(symbol, default_interval, start_date, end_date)
-if df.empty:
-    st.warning("⚠️ No se encontraron datos para el símbolo ingresado.")
-    st.stop()
 
-low_price = df['low'].min()
-high_price = df['high'].max()
-price_step = (high_price - low_price) / resolution
-price_bins = np.arange(low_price, high_price + price_step, price_step)
-volume_profile = np.zeros(len(price_bins) - 1)
+# 🧭 Crear pestañas
+tab1, tab2, tab3, tab4 = st.tabs(["📊 Perfil de Volumen", "📐 Trazado Técnico", "🖌️ Dibujo y Anotaciones", "📈 Gráfico de Velas + VP Dinámico"])
 
-for _, row in df.iterrows():
-    mask = (price_bins[:-1] < row['high']) & (price_bins[1:] > row['low'])
-    volume_profile[mask] += row['volume'] / mask.sum() if mask.sum() > 0 else 0
-
-vpoc_index = np.argmax(volume_profile)
-vpoc_price = (price_bins[vpoc_index] + price_bins[vpoc_index + 1]) / 2
-margin = max(high_price - vpoc_price, vpoc_price - low_price)
-support_price = vpoc_price - margin
-resistance_price = vpoc_price + margin
-
+# 📊 Tab 1: Perfil de Volumen
 with tab1:
-    fig, ax = plt.subplots(figsize=(8, 6))
-    ax.plot(volume_profile, price_bins[:-1], color="green", label="Perfil de Volumen")
-    ax.axhline(vpoc_price, color="yellow", linestyle="--", label="VPOC")
-    ax.axhline(low_price, color="blue", linestyle=":", label="Low")
-    ax.axhline(high_price, color="blue", linestyle=":", label="High")
-    ax.axhline(support_price, color="red", linestyle="--", label="Soporte")
-    ax.axhline(resistance_price, color="lime", linestyle="--", label="Resistencia")
-    ax.set_xlabel("Volumen")
-    ax.set_ylabel("Precio")
-    ax.set_title(f"Perfil de Volumen para {symbol}")
-    ax.legend()
-    ax.grid(True)
-    st.pyplot(fig)
+    st.subheader("Perfil de Volumen")
+    prices = df["close"]
+    volumes = df["volume"]
+    hist, bins = np.histogram(prices, bins=resolution, weights=volumes)
+    bin_centers = 0.5 * (bins[1:] + bins[:-1])
+    vpoc_index = np.argmax(hist)
+    vpoc_price = bin_centers[vpoc_index]
+    threshold = 0.7 * np.sum(hist)
+    cumulative = np.cumsum(hist[np.argsort(hist)[::-1]])
+    va_indices = np.where(cumulative <= threshold)[0]
+    va_low = bins[min(va_indices)] if len(va_indices) > 0 else bins[0]
+    va_high = bins[max(va_indices) + 1] if len(va_indices) > 0 else bins[-1]
 
-# 🧱 Tab 2 y Tab 3 se mantienen igual (puedes copiar desde tu versión actual)
+    fig = go.Figure()
+    fig.add_trace(go.Bar(x=hist, y=bin_centers, orientation='h', name='Volumen'))
+    fig.add_shape(type="line", x0=0, x1=max(hist), y0=vpoc_price, y1=vpoc_price,
+                  line=dict(color="red", width=2), name="VPOC")
+    fig.update_layout(height=600, yaxis_title="Precio", xaxis_title="Volumen")
+    st.plotly_chart(fig, use_container_width=True)
 
-# 🧱 Tab 4: Velas + VP Dinámico + Media Móvil
+# 📐 Tab 2: Trazado Técnico
+with tab2:
+    st.subheader("Trazado Técnico")
+    ma_type = st.selectbox("Tipo de media móvil", ["SMA", "EMA", "WMA"])
+    ma_period = st.slider("Periodo", 5, 100, 20)
+    if ma_type == "SMA":
+        df["ma"] = df["close"].rolling(ma_period).mean()
+    elif ma_type == "EMA":
+        df["ma"] = df["close"].ewm(span=ma_period).mean()
+    elif ma_type == "WMA":
+        weights = np.arange(1, ma_period + 1)
+        df["ma"] = df["close"].rolling(ma_period).apply(lambda x: np.dot(x, weights)/weights.sum(), raw=True)
+
+    fig = go.Figure()
+    fig.add_trace(go.Scatter(x=df.index, y=df["close"], mode="lines", name="Precio"))
+    fig.add_trace(go.Scatter(x=df.index, y=df["ma"], mode="lines", name=f"{ma_type} ({ma_period})"))
+    fig.update_layout(height=600)
+    st.plotly_chart(fig, use_container_width=True)
+
+# 🖌️ Tab 3: Dibujo libre
+with tab3:
+    st.subheader("Dibujo y Anotaciones")
+    canvas_result = st_canvas(
+        fill_color="rgba(255, 165, 0, 0.3)",
+        stroke_width=2,
+        stroke_color="#000000",
+        background_color="#ffffff",
+        update_streamlit=True,
+        height=400,
+        drawing_mode="freedraw",
+        key="canvas"
+    )
+    if canvas_result.json_data:
+        st.json(canvas_result.json_data)
+
+# 📈 Tab 4: Velas + VP dinámico
 with tab4:
-    st.subheader("📈 Velas sincronizadas con Perfil de Volumen")
-
-    interval_map = {
-        "1 minuto": "1m",
-        "5 minutos": "5m",
-        "15 minutos": "15m",
-        "1 hora": "1h",
-        "4 horas": "4h",
-        "Diario": "1d",
-        "Semanal": "1wk",
-        "Mensual": "1mo"
-    }
-    selected_interval = st.selectbox("Temporalidad", list(interval_map.keys()), index=4)
-    interval = interval_map[selected_interval]
-
-    df_candle = get_data(symbol, interval, start_date, end_date)
-    if df_candle.empty:
-        st.warning("⚠️ No se encontraron datos para esta temporalidad.")
-        st.stop()
-
-    low = df_candle['low'].min()
-    high = df_candle['high'].max()
-    bins = np.linspace(low, high, 60)
-    vp = np.zeros(len(bins) - 1)
-
-    for _, row in df_candle.iterrows():
-        mask = (bins[:-1] < row['high']) & (bins[1:] > row['low'])
-        vp[mask] += row['volume'] / mask.sum() if mask.sum() > 0 else 0
-
-    poc_index = np.argmax(vp)
-    poc_price = (bins[poc_index] + bins[poc_index + 1]) / 2
-
-    total_vol = vp.sum()
-    va_target = total_vol * 0.68
-    sorted_indices = np.argsort(vp)[::-1]
-    va_sum = 0
-    va_indices = []
-
-    for i in sorted_indices:
-        va_sum += vp[i]
-        va_indices.append(i)
-        if va_sum >= va_target:
-            break
-
-    va_low = bins[min(va_indices)]
-    va_high = bins[max(va_indices) + 1]
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
+    st.subheader("Gráfico de Velas + VP Dinámico")
+    fig = go.Figure(data=[go.Candlestick(
+        x=df.index,
+        open=df["open"],
+        high=df["high"],
+        low=df["low"],
+        close=df["close"]
+    )])
+    fig.update_layout(height=600)
+    st.plotly_chart(fig, use_container_width=True)

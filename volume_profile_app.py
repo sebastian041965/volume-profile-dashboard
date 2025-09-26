@@ -204,7 +204,30 @@ def get_data(symbol, interval, start, end):
 df = get_data(symbol, default_interval, start_date, end_date)
 
 # 🧭 Crear pestañas
-tab1, tab2, tab3, tab4 = st.tabs(["📊 Perfil de Volumen", "📐 Trazado Técnico", "🖌️ Dibujo y Anotaciones", "📈 Gráfico de Velas + VP Dinámico"])
+tab0, tab1, tab2, tab3, tab4 = st.tabs(["🏠 Inicio", "📊 Perfil de Volumen", "📐 Trazado Técnico", "🖌️ Dibujo", "📈 Velas + VP"])
+
+with tab0:
+    st.image("logo_st.png", width=120)  # Asegúrate de subir tu logo
+    st.title("Bienvenido a Sebastian Trading")
+    st.markdown("""
+    Este dashboard te permite realizar análisis técnico avanzado con perfil de volumen, trazado dinámico, dibujo libre y gráficos de velas interactivos.  
+    Ideal para traders, analistas y entusiastas del mercado.
+    """)
+    st.markdown("### 🚀 ¿Qué incluye?")
+    st.markdown("""
+    - Perfil de volumen con VPOC y áreas de valor  
+    - Gráfico de velas con medias móviles  
+    - Dibujo libre editable  
+    - Detección automática de fuente (Binance, Yahoo Finance, CoinGecko)  
+    - Autenticación por usuario  
+    """)
+    st.markdown("### 📞 Contacto")
+    st.markdown("""
+    **Sebastian**  
+    📍 Extremadura, España  
+    📧 sebastian@sebastiantrading.com  
+    🌐 [sebastiantrading.com](https://sebastiantrading.com)
+    """)
 
 # 📊 Tab 1: Perfil de Volumen
 with tab1:
@@ -275,3 +298,4 @@ with tab4:
     )])
     fig.update_layout(height=600)
     st.plotly_chart(fig, use_container_width=True)
+
